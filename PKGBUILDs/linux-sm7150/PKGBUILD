@@ -1,0 +1,178 @@
+# Linux aarch64 for Qualcomm Snapdragon 730/730G/732G (SM7150) devices
+# Maintainer: Vesek <me@vesek.eu>
+
+buildarch=8
+
+pkgbase=linux-sm7150
+_srcname="linux-7.1_rc3"
+_kernelname=${pkgbase#linux}
+_desc="Linux aarch64 for Qualcomm Snapdragon 730/730G/732G (SM7150) devices"
+pkgver="7.1_rc3"
+pkgrel=1
+arch=('aarch64')
+url="http://www.kernel.org/"
+license=('GPL-2.0-only')
+makedepends=('kmod' 'inetutils' 'bc' 'git' 'dtc' 'python')
+options=('!strip')
+source=("https://github.com/sm7150-mainline/linux/archive/refs/tags/v${pkgver}.tar.gz"
+        'config'
+        'linux.preset')
+md5sums=('c9fed5be69bd9643cae5f40afad715d5'
+         'b9ecd63f2899b8bc222dcb30934fbb27'
+         '8b93b6ca167f70c60277f352f7b78024')
+
+prepare() {
+  cd $_srcname
+
+  echo "Setting version..."
+  echo "-$pkgrel" > localversion.10-pkgrel
+  echo "${pkgbase#linux}" > localversion.20-pkgname
+
+  cat "${srcdir}/config" > ./.config
+}
+
+_kmake() {
+  make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- "$@"
+}
+
+build() {
+  cd ${_srcname}
+
+  # get kernel version
+  _kmake prepare
+  _kmake -s kernelrelease > version
+
+  # build!
+  unset LDFLAGS
+  _kmake ${MAKEFLAGS} Image Image.gz modules
+  # Generate device tree blobs with symbols to support applying device tree overlays in U-Boot
+  local sm7150_dtbs=$(ls arch/arm64/boot/dts/qcom/sm7150*.dts | sed -E 's|arch/arm64/boot/dts/(.*)\.dts|\1.dtb|')
+  _kmake ${MAKEFLAGS} DTC_FLAGS="-@" $sm7150_dtbs
+}
+
+_package() {
+  pkgdesc="The Linux Kernel and modules - ${_desc}"
+  depends=('coreutils' 'kmod' 'mkinitcpio>=0.7')
+  optdepends=(
+    'linux-firmware: firmware images needed for some other devices'
+    'wireless-regdb: to set the correct wireless channels of your country'
+  )
+  provides=("linux=${pkgver}" "KSMBD-MODULE" "WIREGUARD-MODULE")
+  conflicts=('linux')
+  install=${pkgname}.install
+
+  cd $_srcname
+  local kernver="$(<version)"
+  local modulesdir="$pkgdir/usr/lib/modules/$kernver"
+
+  echo "Installing boot image and dtbs..."
+  install -Dm644 arch/arm64/boot/Image{,.gz} -t "${pkgdir}/boot"
+  install -Dm644 arch/arm64/boot/dts/qcom/sm7150*.dtb -t "${pkgdir}/boot/dtbs/qcom/"
+
+  echo "Installing modules..."
+  _kmake INSTALL_MOD_PATH="$pkgdir/usr" INSTALL_MOD_STRIP=1 DEPMOD=/doesnt/exist modules_install
+
+  # remove build link
+  rm "$modulesdir"/build
+
+  # sed expression for following substitutions
+  local _subst="
+    s|%PKGBASE%|${pkgbase}|g
+    s|%KERNVER%|${kernver}|g
+  "
+
+  # install mkinitcpio preset file
+  sed "${_subst}" ../linux.preset |
+    install -Dm644 /dev/stdin "${pkgdir}/etc/mkinitcpio.d/${pkgbase}.preset"
+
+  # rather than use another hook (90-linux.hook) rely on mkinitcpio's 90-mkinitcpio-install.hook
+  # which avoids a double run of mkinitcpio that can occur
+  install -d "${pkgdir}/usr/lib/initcpio/"
+  echo "dummy file to trigger mkinitcpio to run" > "${pkgdir}/usr/lib/initcpio/$(<version)"
+}
+
+_package-headers() {
+  pkgdesc="Header files and scripts for building modules for linux kernel - ${_desc}"
+  provides=("linux-headers=${pkgver}")
+  conflicts=('linux-headers')
+
+  cd $_srcname
+  local builddir="$pkgdir/usr/lib/modules/$(<version)/build"
+
+  echo "Installing build files..."
+  install -Dt "$builddir" -m644 .config Makefile Module.symvers System.map \
+    localversion.* version vmlinux
+  install -Dt "$builddir/kernel" -m644 kernel/Makefile
+  install -Dt "$builddir/arch/arm64" -m644 arch/arm64/Makefile
+  cp -t "$builddir" -a scripts
+
+  # add xfs and shmem for aufs building
+  mkdir -p "$builddir"/{fs/xfs,mm}
+
+  echo "Installing headers..."
+  cp -t "$builddir" -a include
+  cp -t "$builddir/arch/arm64" -a arch/arm64/include
+  install -Dt "$builddir/arch/arm64/kernel" -m644 arch/arm64/kernel/asm-offsets.s
+  mkdir -p "$builddir/arch/arm"
+  cp -t "$builddir/arch/arm" -a arch/arm/include
+
+  install -Dt "$builddir/drivers/md" -m644 drivers/md/*.h
+  install -Dt "$builddir/net/mac80211" -m644 net/mac80211/*.h
+
+  # https://bugs.archlinux.org/task/13146
+  install -Dt "$builddir/drivers/media/i2c" -m644 drivers/media/i2c/msp3400-driver.h
+
+  # https://bugs.archlinux.org/task/20402
+  install -Dt "$builddir/drivers/media/usb/dvb-usb" -m644 drivers/media/usb/dvb-usb/*.h
+  install -Dt "$builddir/drivers/media/dvb-frontends" -m644 drivers/media/dvb-frontends/*.h
+  install -Dt "$builddir/drivers/media/tuners" -m644 drivers/media/tuners/*.h
+
+  # https://bugs.archlinux.org/task/71392
+  install -Dt "$builddir/drivers/iio/common/hid-sensors" -m644 drivers/iio/common/hid-sensors/*.h
+
+  echo "Installing KConfig files..."
+  find . -name 'Kconfig*' -exec install -Dm644 {} "$builddir/{}" \;
+
+  echo "Removing unneeded architectures..."
+  local arch
+  for arch in "$builddir"/arch/*/; do
+    [[ $arch = */arm64/ || $arch == */arm/ ]] && continue
+    echo "Removing $(basename "$arch")"
+    rm -r "$arch"
+  done
+
+  echo "Removing documentation..."
+  rm -r "$builddir/Documentation"
+
+  echo "Removing broken symlinks..."
+  find -L "$builddir" -type l -printf 'Removing %P\n' -delete
+
+  echo "Removing loose objects..."
+  find "$builddir" -type f -name '*.o' -printf 'Removing %P\n' -delete
+
+  echo "Stripping build tools..."
+  local file
+  while read -rd '' file; do
+    case "$(file -bi "$file")" in
+      application/x-sharedlib\;*)      # Libraries (.so)
+        strip -v $STRIP_SHARED "$file" ;;
+      application/x-archive\;*)        # Libraries (.a)
+        strip -v $STRIP_STATIC "$file" ;;
+      application/x-executable\;*)     # Binaries
+        strip -v $STRIP_BINARIES "$file" ;;
+      application/x-pie-executable\;*) # Relocatable binaries
+        strip -v $STRIP_SHARED "$file" ;;
+    esac
+  done < <(find "$builddir" -type f -perm -u+x ! -name vmlinux -print0)
+
+  echo "Adding symlink..."
+  mkdir -p "$pkgdir/usr/src"
+  ln -sr "$builddir" "$pkgdir/usr/src/$pkgbase"
+}
+
+pkgname=("${pkgbase}" "${pkgbase}-headers")
+for _p in ${pkgname[@]}; do
+  eval "package_${_p}() {
+    _package${_p#${pkgbase}}
+  }"
+done
