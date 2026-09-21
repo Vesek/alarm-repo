@@ -44,13 +44,8 @@ RUN set -eux; \
     else \
         echo "Error: No packages were built!"; \
         exit 1; \
-    fi; \
-    \
-    echo "==== Creating Archive ===="; \
-    cd /build/repo; \
-    # Create a compressed tarball of the entire aarch64 directory
-    tar -czvf /build/alarm-sm7150-repo.tar.gz aarch64/
-
-# Export the archive to the host
+    fi
+    
+# Export the raw aarch64 repository folder directly to the host
 FROM scratch AS exporter
-COPY --from=builder /build/alarm-sm7150-repo.tar.gz /
+COPY --from=builder /build/repo/aarch64/ /aarch64/
