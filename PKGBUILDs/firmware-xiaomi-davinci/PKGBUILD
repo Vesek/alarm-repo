@@ -1,0 +1,31 @@
+# Maintainer: Vesek <vesek@plajta.eu>
+
+pkgname=firmware-xiaomi-davinci
+pkgver=5
+pkgrel=1
+pkgdesc="Firmware for Xiaomi Mi 9T / Redmi K20"
+arch=('aarch64')
+url="https://github.com/sm7150-mainline/firmware-xiaomi-davinci"
+license=('custom:proprietary')
+options=('!strip')
+
+_commit="7c25d3fe5883f25f8f068e89c6442b4c608835f0"
+
+source=(
+    "${pkgname}.conf"
+    "${pkgname}-${_commit}.tar.gz::${url}/archive/${_commit}/${pkgname}-${_commit}.tar.gz"
+)
+
+sha512sums=(
+    'c6530ec101aef8ed53c086827ddb9e022381573a83945159eb4d86bda60df03a4865fa3c73903f372de5358941687e55b7a64c286e6b1dabaaaf7e036648ceaf'
+    'a35bfe23cdd45ff77f1ff42e7d6beb3df792fb6c8ebb86f5cb3409b7a472ff8484c1b87fce25af43425500189014f735297c71f8da64b4da0a4e5f1cedaa58e5'
+)
+
+package() {
+    cd "$srcdir/${pkgname}-${_commit}"
+    
+    find . -type f -exec install -Dm644 {} "$pkgdir"/{} \;
+
+    install -Dm644 "$srcdir/${pkgname}.conf" -t \
+        "$pkgdir/etc/mkinitcpio.conf.d"
+}

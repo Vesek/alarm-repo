@@ -1,0 +1,31 @@
+# Maintainer: Vesek <vesek@plajta.eu>
+
+pkgname=firmware-xiaomi-surya
+pkgver=5
+pkgrel=1
+pkgdesc="Firmware for Xiaomi POCO X3 NFC"
+arch=('aarch64')
+url="https://github.com/sm7150-mainline/firmware-xiaomi-surya"
+license=('custom:proprietary')
+options=('!strip')
+
+_commit="971dfbf9dafb27a235eea04794cfcb501fa80655"
+
+source=(
+    "${pkgname}.conf"
+    "${pkgname}-${_commit}.tar.gz::${url}/archive/${_commit}/${pkgname}-${_commit}.tar.gz"
+)
+
+sha512sums=(
+    'db31e03ff0a09bc3fa6aaf873e587c0a1259d2e0db2cdacc52dfe5d7758ed68a30f78b5d799a8f0313f7a28ca34b550f151545c4bb70a7d7e50ab2bbbf74bb33'
+    '7c45f0ccd601ddd9224fd30b295434030d7f3f40773b9569a2178c8b5246c50d4586b5c3876e9ed5cd043bdfc5ef1dca57f3eca368ac9ee25224ef38bd9cfd66'
+)
+
+package() {
+    cd "$srcdir/${pkgname}-${_commit}"
+    
+    find . -type f -exec install -Dm644 {} "$pkgdir"/{} \;
+
+    install -Dm644 "$srcdir/${pkgname}.conf" -t \
+        "$pkgdir/etc/mkinitcpio.conf.d"
+}

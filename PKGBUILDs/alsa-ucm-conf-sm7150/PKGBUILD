@@ -1,0 +1,21 @@
+# Maintainer: Vesek <vesek@plajta.eu>
+
+pkgname=alsa-ucm-conf-sm7150
+pkgver=1.2.15.3_git20260513
+pkgrel=1
+pkgdesc="ALSA UCM configuration for Qualcomm Snapdragon 730/730G/732G (SM7150) devices"
+url="https://github.com/sm7150-mainline/alsa-ucm-conf"
+arch=('any')
+license=('BSD-3-Clause')
+provides=('alsa-ucm-conf')
+conflicts=('alsa-ucm-conf')
+replaces=('alsa-ucm-conf')
+depends=('alsa-lib')
+_commit="4821070589906c1d80c83210639591678c245369"
+source=("alsa-ucm-conf-${_commit}.tar.gz::https://github.com/sm7150-mainline/alsa-ucm-conf/archive/${_commit}.tar.gz")
+sha512sums=('a9ceda049459bf8e228ac34ddc97ee69187ad7183f48a8bb3df0d513dd6066f0d10cb86e40e5b6e24c88f5152d47fec81f872db9ef6c1e027090198b5ddb1d09')
+
+package() {
+    mkdir -p "$pkgdir/usr/share/alsa"
+    cp -r "$srcdir/alsa-ucm-conf-${_commit}/ucm2" "$pkgdir/usr/share/alsa/"
+}

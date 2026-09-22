@@ -1,0 +1,31 @@
+# Maintainer: Vesek <vesek@plajta.eu>
+
+pkgname=firmware-xiaomi-sweet
+pkgver=3
+pkgrel=1
+pkgdesc="Firmware for Xiaomi Redmi Note 10 Pro"
+arch=('aarch64')
+url="https://github.com/sm7150-mainline/firmware-xiaomi-sweet"
+license=('custom:proprietary')
+options=('!strip')
+
+_commit="5a42e6546fc748a12a59d3f9e72be4a53e8dd931"
+
+source=(
+    "${pkgname}.conf"
+    "${pkgname}-${_commit}.tar.gz::${url}/archive/${_commit}/${pkgname}-${_commit}.tar.gz"
+)
+
+sha512sums=(
+    '8a4783c4f6b8b06e4d5fad9381ecfb95bb30426306fd9da2e70ad14f941bf5581f550bd984f88d1de95a7061a90c383b4b6aebda0e6bc1852b3b3c069e82ef9d'
+    '5adecf0c316741e1621489a8e219d0377b74d5a5ca4479afd37ecc1b28ab94153c9085b820c063976be2cc92f49c3c570c9b7685ae3af218561641d789af0718'
+)
+
+package() {
+    cd "$srcdir/${pkgname}-${_commit}"
+    
+    find . -type f -exec install -Dm644 {} "$pkgdir"/{} \;
+
+    install -Dm644 "$srcdir/${pkgname}.conf" -t \
+        "$pkgdir/etc/mkinitcpio.conf.d"
+}

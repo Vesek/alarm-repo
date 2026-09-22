@@ -1,0 +1,31 @@
+# Maintainer: Vesek <vesek@plajta.eu>
+
+pkgname=firmware-xiaomi-tucana
+pkgver=3
+pkgrel=1
+pkgdesc="Firmware for Xiaomi Mi Note 10 / Mi CC9 Pro"
+arch=('aarch64')
+url="https://github.com/sm7150-mainline/firmware-xiaomi-tucana"
+license=('custom:proprietary')
+options=('!strip')
+
+_commit="a5c17ecf33320021e2c91a030d48b8726e9b5553"
+
+source=(
+    "${pkgname}.conf"
+    "${pkgname}-${_commit}.tar.gz::${url}/archive/${_commit}/${pkgname}-${_commit}.tar.gz"
+)
+
+sha512sums=(
+    'b3414cb90451953c1e8dda70c7e263a3125f394c107ec78d7635744e9c88d7eb4ed1798c2bd523f7846d3eeddc398ae4e0210fe8e8439f0e4750d32c6e9ec99b'
+    '210ad26e0b7c474457c2f08db38daf8c081a2a30e75e650f6516bb13e1076aad90db981702642bacdff25ca94ad7492b9dceddd46434333b905f69475a050be1'
+)
+
+package() {
+    cd "$srcdir/${pkgname}-${_commit}"
+    
+    find . -type f -exec install -Dm644 {} "$pkgdir"/{} \;
+
+    install -Dm644 "$srcdir/${pkgname}.conf" -t \
+        "$pkgdir/etc/mkinitcpio.conf.d"
+}

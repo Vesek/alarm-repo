@@ -1,0 +1,32 @@
+# Maintainer: Vesek <vesek@plajta.eu>
+
+pkgname=firmware-google-sunfish
+pkgver=2
+pkgrel=1
+pkgdesc="Firmware for Google Pixel 4a"
+arch=('aarch64')
+url="https://github.com/sm7150-mainline/firmware-google-sunfish"
+license=('custom:proprietary')
+options=('!strip')
+
+_commit="fe63598e1bd9884bd68ba89e4670dae4d70b1e3e"
+
+source=(
+    "${pkgname}.conf"
+    "${pkgname}-${_commit}.tar.gz::${url}/archive/${_commit}/${pkgname}-${_commit}.tar.gz"
+)
+
+sha512sums=(
+    '19d706905df1561634d6d289cabfb6646041668510619aa4a0b7e20a8d8c9a91b4efd5ffb67ce008dca4eb5573ffed9d1cbcb77f1cd8a38f712b56093720e583'
+    'c94511f6e6d6aa6ebf3238e27b7092498f3d58be9893d05e874ce9551cffb1a3e38b994a822c4364c97da0f03925d4d554045234b1f78b59af63207a396ee713'
+)
+
+package() {
+    cd "$srcdir/${pkgname}-${_commit}"
+    
+    mv lib usr
+    find . -type f -exec install -Dm644 {} "$pkgdir"/{} \;
+
+    install -Dm644 "$srcdir/${pkgname}.conf" -t \
+        "$pkgdir/etc/mkinitcpio.conf.d"
+}
