@@ -1,0 +1,4 @@
+# /usr/lib/systemd/system-preset/80-sargo.preset
+enable tqftpserv.service
+enable rmtfs.service
+enable pd-mapper.service

@@ -1,0 +1,69 @@
+# Maintainer: Vesek <vesek@plajta.eu>
+
+pkgbase=firmware-qcom-sm7150
+pkgname=('firmware-qcom-sm7150' 'firmware-qcom-sm7150-ath10k')
+pkgver=2
+pkgrel=1
+pkgdesc="Firmware for Qualcomm SM7150 devices"
+arch=('aarch64')
+url="https://github.com/sm7150-mainline"
+license=('custom:proprietary')
+makedepends=('qca-swiss-army-knife' 'zstd')
+options=('!strip')
+
+_ath10k_fw_commit="792c716c85c06861c4d17bce5ec21fba7f0f7de6"
+
+source=(
+    "${pkgbase}.conf"
+    "${pkgbase}-ath10k-${_ath10k_fw_commit}.tar.gz::https://github.com/sm7150-mainline/${pkgbase}-ath10k/archive/${_ath10k_fw_commit}/${pkgbase}-ath10k-${_ath10k_fw_commit}.tar.gz"
+)
+
+sha512sums=(
+    '0021df92ca94074458ffa4fc3b5a76bcb035fc28e9c94f9f43d6c2a5aa797563396a2f39b2e25e0d14dfbd48cdb5ba7a11a22c8540261e715e92337548f9edca'
+    '0e548ef14ec0bb1af9c62e25b3b0a98732b46a081d506cc1f0d52145b288b59b88317816c50521364d0f44431a2b5fd814200313095291d981eca80adec9d094'
+)
+
+build() {
+    cd "$srcdir/${pkgbase}-ath10k-${_ath10k_fw_commit}"
+
+    export ZSTD_CLEVEL=19
+
+    # Create a board-2.bin file - this contains the list of device-specific
+    # bdwlan files and their corresponding calibration variant properties
+    ath10k-bdencoder -c board-2.json
+    zstd --compress board-2.bin
+
+    # Create a firmware-5.bin file - this contains feature information about
+    # the WCN3990 module
+    ath10k-fwencoder --create \
+        --features=wowlan,no-nwifi-decap-4addr-padding,allows-mesh-bcast,mgmt-tx-by-ref,non-bmi,single-chan-info-per-channel  \
+        --set-wmi-op-version=tlv --set-htt-op-version=tlv \
+        --set-fw-api=5
+    zstd --compress firmware-5.bin
+}
+
+package_firmware-qcom-sm7150() {
+    pkgdesc="Firmware for Qualcomm SM7150 devices"
+    depends=(
+        'firmware-qcom-sm7150-ath10k'
+        'firmware-google-sunfish'
+        'linux-firmware-qcom'
+        'firmware-xiaomi-davinci'
+        'firmware-xiaomi-surya'
+        'firmware-xiaomi-sweet'
+        'firmware-xiaomi-tucana'
+        'linux-firmware-atheros'
+    )
+
+    install -Dm644 "$srcdir/${pkgbase}.conf" -t \
+        "$pkgdir/etc/mkinitcpio.conf.d"
+}
+
+package_firmware-qcom-sm7150-ath10k() {
+    pkgdesc="WiFi firmware for Qualcomm SM7150 devices"
+
+    cd "$srcdir/${pkgbase}-ath10k-${_ath10k_fw_commit}"
+
+    install -Dm644 *.bin.zst -t \
+        "$pkgdir/usr/lib/firmware/updates/ath10k/WCN3990/hw1.0"
+}

@@ -1,0 +1,20 @@
+# Maintainer: Vesek <vesek@plajta.eu>
+
+pkgname=sm7150-device-support
+pkgver=0.1
+pkgrel=3
+pkgdesc="Device-specific support files, boot hooks, and configs for Qualcomm Snapdragon 730/730G/732G (SM7150) devices"
+arch=('aarch64')
+license=('GPL')
+depends=('mkinitcpio' 'linux-sm7150' 'linux-firmware-qcom'
+         'firmware-qcom-sm7150' 'python' 'qrtr' 'pd-mapper' 'tqftpserv'
+         'rmtfs' 'qbootctl' 'alsa-ucm-conf-sm7150'
+        )
+source=(
+    '80-sm7150.preset'
+)
+sha256sums=('73a1fc55c80be9be50cf16e8c2bdf50e18c5143ff76a455a478a8c007c30b37d')
+
+package() {
+    install -Dm644 "$srcdir/80-sm7150.preset" "$pkgdir/usr/lib/systemd/system-preset/80-sm7150.preset"
+}

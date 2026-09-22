@@ -1,0 +1,9 @@
+[submodule "PKGBUILDs-chroot/tqftpserv"]
+	path = PKGBUILDs-chroot/tqftpserv
+	url = https://aur.archlinux.org/tqftpserv.git
+[submodule "PKGBUILDs-chroot/qrtr"]
+	path = PKGBUILDs-chroot/qrtr
+	url = https://aur.archlinux.org/qrtr.git
+[submodule "PKGBUILDs-chroot/qbootctl"]
+	path = PKGBUILDs-chroot/qbootctl
+	url = https://aur.archlinux.org/qbootctl.git

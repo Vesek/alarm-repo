@@ -2,6 +2,9 @@
 
 FROM archlinux:base-devel AS builder
 
+# Add my x86_64 repo so pacman can find build tools like qca-swiss-army-knife
+RUN printf '\n[archpkg-tools]\nServer = https://archpkg.vesek.eu/x86_64\nSigLevel = Optional TrustAll\n' >> /etc/pacman.conf
+
 # Install cross-compiler and sudo
 RUN pacman -Syu --noconfirm aarch64-linux-gnu-gcc sudo
 
@@ -22,23 +25,27 @@ COPY --chown=builduser:builduser PKGBUILDs /build/src/
 ENV ARCH=arm64
 ENV CROSS_COMPILE=aarch64-linux-gnu-
 
-# Loop over all directories, build them, and create the repo database
+# Loop over all directories, build them, and create the repo database.
+# Only makedepends are installed (not runtime depends), since runtime deps
+# are aarch64 packages that don't exist on the x86_64 build host.
+# Thanks to Claude for realising you can just source the PKGBUILDs
 RUN set -eux; \
     mkdir -p /build/repo/aarch64; \
     for pkgdir in /build/src/*/; do \
-        # Check if the directory has a PKGBUILD
         if [ -f "${pkgdir}PKGBUILD" ]; then \
             echo "==== Building package in ${pkgdir} ===="; \
             cd "${pkgdir}"; \
-            makepkg --config /build/aarch64-makepkg.conf --ignorearch --syncdeps --noconfirm; \
-            # Move all generated package files to our repo directory
+            makedeps=$(bash -c 'source PKGBUILD; echo "${makedepends[@]}"'); \
+            if [ -n "$makedeps" ]; then \
+                sudo pacman -S --noconfirm --needed $makedeps; \
+            fi; \
+            makepkg --config /build/aarch64-makepkg.conf --ignorearch --nodeps --noconfirm; \
             mv *.pkg.tar.* /build/repo/aarch64/; \
         fi; \
     done; \
     \
     echo "==== Generating Repository Database ===="; \
     cd /build/repo/aarch64; \
-    # Ensure packages exist, then generate the DB
     if ls *.pkg.tar.* >/dev/null 2>&1; then \
         repo-add alarm-sm7150.db.tar.gz *.pkg.tar.*; \
     else \

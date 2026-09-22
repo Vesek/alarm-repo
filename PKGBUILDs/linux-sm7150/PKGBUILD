@@ -1,5 +1,5 @@
 # Linux aarch64 for Qualcomm Snapdragon 730/730G/732G (SM7150) devices
-# Maintainer: Vesek <me@vesek.eu>
+# Maintainer: Vesek <vesek@plajta.eu>
 
 buildarch=8
 

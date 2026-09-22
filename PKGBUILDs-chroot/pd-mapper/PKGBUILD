@@ -1,0 +1,33 @@
+# Edited AUR PKGBUILD since they don't accept edits or registers right now
+# Add makedepends since they were missing
+# Fix cross-compilation for ARM
+# Maintainer: Super Tecno Gym <banana@grrlz.net>
+
+pkgname="pd-mapper"
+pkgdesc="Qualcomm IPC Router protocol"
+pkgver=1.1
+pkgrel=1
+arch=(aarch64 x86_64)
+url="https://github.com/linux-msm/pd-mapper"
+license=("BSD-3-Clause")
+conflicts=("${pkgname%-git}")
+groups=(qcom-icnss-wlan)
+makedepends=('xz' 'qrtr')
+_srcname="${pkgname}-${pkgver}"
+source=(
+	"${_srcname}.tar.gz::https://github.com/linux-msm/pd-mapper/archive/refs/tags/v${pkgver}.tar.gz"
+)
+sha256sums=('7654a7fb8b70b0c7670f98ad9313649abc48eabcef84dad086ed01408fd538a2')
+
+build() {
+	cd "$_srcname"
+
+	make prefix=/usr CC="${CHOST:+$CHOST-}gcc"
+}
+
+package() {
+	cd "$_srcname"
+
+	make prefix=/usr CC="${CHOST:+$CHOST-}gcc" DESTDIR="$pkgdir/" install
+	install -Dm644 LICENSE "$pkgdir"/usr/share/licenses/$pkgname/COPYING
+}
