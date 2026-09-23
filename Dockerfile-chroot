@@ -35,7 +35,20 @@ RUN mkdir -p /build/repo && \
     sed -i '/^\[options\]/a DisableSandbox' /etc/pacman.conf
 
 # Create an unprivileged build user (makepkg refuses to run as root)
-RUN useradd -m builduser
+RUN useradd -m -d /build builduser
+
+ARG GITHUB_LOGIN
+ARG GITHUB_PAT
+RUN if [ -n "$GITHUB_LOGIN" ] && [ -n "$GITHUB_PAT" ]; then \
+        printf "machine github.com\nlogin %s\npassword %s\nmachine api.github.com\nlogin %s\npassword %s\nmachine codeload.github.com\nlogin %s\npassword %s\nmachine objects.githubusercontent.com\nlogin %s\npassword %s\n" \
+        "${GITHUB_LOGIN}" "${GITHUB_PAT}" "${GITHUB_LOGIN}" "${GITHUB_PAT}" "${GITHUB_LOGIN}" "${GITHUB_PAT}" "${GITHUB_LOGIN}" "${GITHUB_PAT}" > /build/.netrc && \
+        chmod 600 /build/.netrc && \
+        chown builduser:builduser /build/.netrc; \
+    fi
+
+# Configure makepkg to use .netrc
+RUN sed -i 's/^DLAGENTS=(/DLAGENTS=(/' /etc/makepkg.conf && \
+    sed -i -E "s/(https?::.*curl.*) -o %o %u/\1 --netrc-optional -o %o %u/g" /etc/makepkg.conf
 
 # Copy all chroot package sources
 COPY --chown=builduser:builduser PKGBUILDs-chroot /build/src/

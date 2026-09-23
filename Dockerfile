@@ -12,6 +12,15 @@ RUN pacman -Syu --noconfirm aarch64-linux-gnu-gcc sudo
 RUN useradd -m -d /build builduser && \
     echo 'builduser ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builduser
 
+ARG GITHUB_LOGIN
+ARG GITHUB_PAT
+RUN if [ -n "$GITHUB_LOGIN" ] && [ -n "$GITHUB_PAT" ]; then \
+        printf "machine github.com\nlogin %s\npassword %s\nmachine api.github.com\nlogin %s\npassword %s\nmachine codeload.github.com\nlogin %s\npassword %s\nmachine objects.githubusercontent.com\nlogin %s\npassword %s\n" \
+        "${GITHUB_LOGIN}" "${GITHUB_PAT}" "${GITHUB_LOGIN}" "${GITHUB_PAT}" "${GITHUB_LOGIN}" "${GITHUB_PAT}" "${GITHUB_LOGIN}" "${GITHUB_PAT}" > /build/.netrc && \
+        chmod 600 /build/.netrc && \
+        chown builduser:builduser /build/.netrc; \
+    fi
+
 USER builduser
 WORKDIR /build
 
