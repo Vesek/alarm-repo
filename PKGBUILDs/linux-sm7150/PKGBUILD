@@ -69,6 +69,11 @@ _package() {
   install -Dm644 arch/arm64/boot/Image{,.gz} -t "${pkgdir}/boot"
   install -Dm644 arch/arm64/boot/dts/qcom/sm7150*.dtb -t "${pkgdir}/boot/dtbs/qcom/"
 
+  install -Dm644 arch/arm64/boot/Image "$modulesdir/vmlinuz"
+
+  # Used by mkinitcpio to name the kernel
+  echo "$pkgbase" | install -Dm644 /dev/stdin "$modulesdir/pkgbase"
+
   echo "Installing modules..."
   _kmake INSTALL_MOD_PATH="$pkgdir/usr" INSTALL_MOD_STRIP=1 DEPMOD=/doesnt/exist modules_install
 
