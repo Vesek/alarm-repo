@@ -2,19 +2,28 @@
 
 pkgname=sm7150-device-support
 pkgver=0.1
-pkgrel=3
+pkgrel=4
 pkgdesc="Device-specific support files, boot hooks, and configs for Qualcomm Snapdragon 730/730G/732G (SM7150) devices"
 arch=('aarch64')
 license=('GPL')
+install=sm7150-device-support.install
 depends=('mkinitcpio' 'linux-sm7150' 'linux-firmware-qcom'
          'firmware-qcom-sm7150' 'python' 'qrtr' 'pd-mapper' 'tqftpserv'
          'rmtfs' 'qbootctl' 'alsa-ucm-conf-sm7150'
         )
 source=(
     '80-sm7150.preset'
+    'nested-gpt.install'
+    'nested-gpt.hook'
 )
-sha256sums=('73a1fc55c80be9be50cf16e8c2bdf50e18c5143ff76a455a478a8c007c30b37d')
+sha256sums=('73a1fc55c80be9be50cf16e8c2bdf50e18c5143ff76a455a478a8c007c30b37d'
+            '31eafb7e2115c9304f4efd37f1642409b0ebefc958374062e2d2ab5c10455f48'
+            '8614b2bf4405cd9d71dfe86abea247f53b72b3173bdba4a56003eed249e8977b')
 
 package() {
     install -Dm644 "$srcdir/80-sm7150.preset" "$pkgdir/usr/lib/systemd/system-preset/80-sm7150.preset"
+
+    # mkinitcpio hook for nested GPT (rootfs inside userdata partition)
+    install -Dm644 "$srcdir/nested-gpt.install" "$pkgdir/usr/lib/initcpio/install/nested-gpt"
+    install -Dm644 "$srcdir/nested-gpt.hook"    "$pkgdir/usr/lib/initcpio/hooks/nested-gpt"
 }

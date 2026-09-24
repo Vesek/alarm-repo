@@ -1,0 +1,14 @@
+post_install() {
+    echo "======================================================================="
+    echo "                              IMPORTANT                                "
+    echo "======================================================================="
+    echo "To boot from the userdata partition, you must add the 'nested-gpt' hook"
+    echo "to your mkinitcpio configuration."
+    echo ""
+    echo "Edit /etc/mkinitcpio.conf and place 'nested-gpt' in the HOOKS array"
+    echo "BEFORE the 'block' hook."
+    echo ""
+    echo "Example:"
+    echo "HOOKS=(base udev autodetect modconf kms keyboard keymap consolefont nested-gpt block filesystems fsck)"
+    echo "======================================================================="
+}

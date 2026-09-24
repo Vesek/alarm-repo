@@ -1,0 +1,15 @@
+#!/bin/bash
+
+build() {
+    add_module loop
+    add_binary losetup
+    add_binary fdisk
+    add_runscript
+}
+
+help() {
+    cat <<HELPEOF
+Exposes nested GPT partitions inside the Android userdata partition
+via losetup -P for rootfs-in-userdata setups (e.g. SM7150 devices).
+HELPEOF
+}

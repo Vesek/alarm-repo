@@ -1,0 +1,29 @@
+#!/usr/bin/ash
+
+run_hook() {
+    modprobe -q loop
+
+    # Wait for the userdata partition to appear
+    local part="" tries=0
+    while [ $tries -lt 30 ]; do
+        for p in /dev/disk/by-partlabel/userdata; do
+            [ -e "$p" ] && part="$p" && break 2
+        done
+        tries=$((tries + 1))
+        sleep 0.5
+    done
+
+    if [ -z "$part" ]; then
+        echo "nested-gpt: userdata partition not found"
+        return
+    fi
+
+    echo "nested-gpt: exposing subpartitions from $part"
+    losetup --show -Pf --sector-size 4096 "$part"
+
+    # Let udev pick up the new loop partition devices
+    if command -v udevadm >/dev/null 2>&1; then
+        udevadm trigger --subsystem-match=block
+        udevadm settle
+    fi
+}
