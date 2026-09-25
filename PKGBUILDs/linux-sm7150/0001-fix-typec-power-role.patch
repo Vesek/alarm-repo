@@ -1,0 +1,11 @@
+--- a/arch/arm64/boot/dts/qcom/sm7150-xiaomi-common.dtsi
++++ b/arch/arm64/boot/dts/qcom/sm7150-xiaomi-common.dtsi
+@@ -601,7 +601,7 @@
+ 	connector {
+ 		compatible = "usb-c-connector";
+ 
+-		power-role = "source";
++		power-role = "dual";
+ 		data-role = "dual";
+ 		self-powered;
+ 

@@ -8,7 +8,7 @@ _srcname="linux-7.1_rc3"
 _kernelname=${pkgbase#linux}
 _desc="Linux aarch64 for Qualcomm Snapdragon 730/730G/732G (SM7150) devices"
 pkgver="7.1_rc3"
-pkgrel=1
+pkgrel=2
 arch=('aarch64')
 url="http://www.kernel.org/"
 license=('GPL-2.0-only')
@@ -16,13 +16,19 @@ makedepends=('kmod' 'inetutils' 'bc' 'git' 'dtc' 'python')
 options=('!strip')
 source=("https://github.com/sm7150-mainline/linux/archive/refs/tags/v${pkgver}.tar.gz"
         'config'
-        'linux.preset')
+        'linux.preset'
+        '0001-fix-typec-power-role.patch')
 md5sums=('c9fed5be69bd9643cae5f40afad715d5'
-         'b9ecd63f2899b8bc222dcb30934fbb27'
-         '8b93b6ca167f70c60277f352f7b78024')
+         'ff2962168e10023a63a373906c93c673'
+         '8b93b6ca167f70c60277f352f7b78024'
+         '6d3934df5bc2400203218f4ff1b15f5f')
+
 
 prepare() {
   cd $_srcname
+
+  echo "Applying Type-C power role patch..."
+  patch -Np1 -i "$srcdir/0001-fix-typec-power-role.patch"
 
   echo "Setting version..."
   echo "-$pkgrel" > localversion.10-pkgrel
