@@ -1,0 +1,112 @@
+# Maintainer: Vesek <vesek@plajta.eu>
+
+pkgname=wine-arm64ec
+pkgver=11.18
+pkgrel=1
+_pkgbasever=${pkgver/rc/-rc}
+
+pkgdesc="A compatibility layer for running Windows programs (with ARM64EC support)"
+url="https://www.winehq.org"
+arch=('aarch64')
+options=(!lto pestrip)
+license=(LGPL-2.1-or-later)
+
+depends=(
+  desktop-file-utils
+  fontconfig
+  freetype2
+  gettext
+  glib2
+  libpcap
+  libunwind
+  libx11
+  libxcursor
+  libxext
+  libxkbcommon
+  libxi
+  libxrandr
+  wayland
+)
+makedepends=(
+  alsa-lib
+  ffmpeg
+  git
+  gnutls
+  gst-plugins-base-libs
+  libcups
+  libgphoto2
+  libpulse
+  libxcomposite
+  libxinerama
+  libxxf86vm
+  mesa
+  opencl-headers
+  opencl-icd-loader
+  pcsclite
+  perl
+  samba
+  sane
+  sdl2
+  unixodbc
+  v4l-utils
+  vulkan-headers
+  vulkan-icd-loader
+  bison
+  flex
+)
+
+install=wine.install
+
+_llvm_mingw_ver=20260922
+source=("https://dl.winehq.org/wine/source/11.x/wine-${pkgver}.tar.xz"
+        "https://github.com/mstorsjo/llvm-mingw/releases/download/${_llvm_mingw_ver}/llvm-mingw-${_llvm_mingw_ver}-ucrt-ubuntu-22.04-aarch64.tar.xz"
+        "30-win32-aliases.conf"
+        "wine-binfmt.conf")
+sha256sums=('SKIP' 'SKIP' 'SKIP' 'SKIP')
+
+prepare() {
+  rm -rf "$pkgname-build"
+  mkdir "$pkgname-build"
+}
+
+build() {
+  export PATH="${srcdir}/llvm-mingw-${_llvm_mingw_ver}-ucrt-ubuntu-22.04-aarch64/bin:${PATH}"
+
+  export CROSSCFLAGS="-O2 -pipe -g"
+  export CROSSCXXFLAGS="-O2 -pipe -g"
+  export CROSSLDFLAGS=""
+
+  if [[ $CFLAGS =~ (-ffile-prefix-map=[^[:space:]]+) ]]; then
+    CROSSCFLAGS="$CROSSCFLAGS ${BASH_REMATCH[1]}"
+    CROSSCXXFLAGS="$CROSSCXXFLAGS ${BASH_REMATCH[1]}"
+  fi
+
+  cd "$srcdir/$pkgname-build"
+  ../wine-${pkgver}/configure \
+    --prefix=/usr \
+    --libdir=/usr/lib \
+    --disable-tests \
+    --enable-archs=arm64ec,aarch64,x86_64,i386 \
+    --enable-build-id
+
+  # Prepend distcc masquerade dir AFTER configure (which must see real compilers
+  # to detect lld and set DELAYLOADFLAG), but BEFORE make
+  if [[ -d /usr/lib/distcc/bin ]]; then
+    export PATH="/usr/lib/distcc/bin:${PATH}"
+  fi
+
+  make -j$(nproc)
+}
+
+package() {
+  cd "$srcdir/$pkgname-build"
+  make prefix="$pkgdir/usr" \
+    libdir="$pkgdir/usr/lib" \
+    dlldir="$pkgdir/usr/lib/wine" install
+
+  # Font aliasing settings for Win32 applications
+  install -d "$pkgdir"/usr/share/fontconfig/conf.{avail,default}
+  install -m644 "$srcdir/30-win32-aliases.conf" "$pkgdir/usr/share/fontconfig/conf.avail"
+  ln -s ../conf.avail/30-win32-aliases.conf "$pkgdir/usr/share/fontconfig/conf.default/30-win32-aliases.conf"
+  install -Dm 644 "$srcdir/wine-binfmt.conf" "$pkgdir/usr/lib/binfmt.d/wine.conf"
+}

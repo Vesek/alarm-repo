@@ -23,10 +23,11 @@ FROM scratch AS builder
 
 COPY --from=fetcher /rootfs/ /
 
-# Initialize pacman keyring and install build tools
+# Initialize pacman keyring, remove useless kernel/firmware, and install build tools
 RUN pacman-key --init && \
     pacman-key --populate archlinuxarm && \
-    pacman -Syu --noconfirm --disable-sandbox base-devel meson git xz
+    pacman -Rnsc --noconfirm linux-aarch64 linux-firmware mkinitcpio || true && \
+    pacman -Syu --noconfirm --disable-sandbox base-devel meson git xz distcc
 
 # DisableSandbox is needed for pacman under QEMU emulation.
 RUN mkdir -p /build/repo && \
@@ -35,7 +36,7 @@ RUN mkdir -p /build/repo && \
     sed -i '/^\[options\]/a DisableSandbox' /etc/pacman.conf
 
 # Create an unprivileged build user (makepkg refuses to run as root)
-RUN useradd -m -d /build builduser
+RUN useradd -m -d /build builduser && chown -R builduser:builduser /build
 
 ARG GITHUB_LOGIN
 ARG GITHUB_PAT
@@ -46,9 +47,21 @@ RUN if [ -n "$GITHUB_LOGIN" ] && [ -n "$GITHUB_PAT" ]; then \
         chown builduser:builduser /build/.netrc; \
     fi
 
-# Configure makepkg to use .netrc
+# Configure makepkg to use .netrc and distcc
+ARG DISTCC_HOST
 RUN sed -i 's/^DLAGENTS=(/DLAGENTS=(/' /etc/makepkg.conf && \
-    sed -i -E "s/(https?::.*curl.*) -o %o %u/\1 --netrc-optional -o %o %u/g" /etc/makepkg.conf
+    sed -i -E "s/(https?::.*curl.*) -o %o %u/\1 --netrc-optional -o %o %u/g" /etc/makepkg.conf && \
+    sed -i 's/!distcc/distcc/g' /etc/makepkg.conf && \
+    sed -i 's/^#MAKEFLAGS="-j2"/MAKEFLAGS="-j16"/g' /etc/makepkg.conf && \
+    sed -i 's/^#DISTCC_HOSTS=""/DISTCC_HOSTS="'"$DISTCC_HOST"'"/g' /etc/makepkg.conf && \
+    echo "DISTCC_HOSTS=\"$DISTCC_HOST\"" >> /etc/makepkg.conf && \
+    echo "MAKEFLAGS=\"-j16\"" >> /etc/makepkg.conf && \
+    for arch in aarch64 arm64ec x86_64 i686; do \
+        ln -s /usr/bin/distcc /usr/lib/distcc/bin/${arch}-w64-mingw32-clang; \
+        ln -s /usr/bin/distcc /usr/lib/distcc/bin/${arch}-w64-mingw32-clang++; \
+        ln -s /usr/bin/distcc /usr/lib/distcc/bin/${arch}-w64-mingw32-gcc; \
+        ln -s /usr/bin/distcc /usr/lib/distcc/bin/${arch}-w64-mingw32-g++; \
+    done
 
 # Copy all chroot package sources
 COPY --chown=builduser:builduser PKGBUILDs-chroot /build/src/

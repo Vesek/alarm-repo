@@ -1,0 +1,32 @@
+# syntax=docker/dockerfile:1.6
+FROM archlinux:base-devel
+
+# Add custom repo for cross compiler
+RUN printf '\n[archpkg-tools]\nServer = https://archpkg.vesek.eu/x86_64\nSigLevel = Optional TrustAll\n' >> /etc/pacman.conf
+
+# Install cross-compiler, distcc, clang, and wget
+RUN pacman -Syu --noconfirm aarch64-linux-gnu-gcc distcc clang wget
+
+# Download and extract llvm-mingw for x86_64 (needed for Wine ARM64EC compilation)
+RUN wget -qO- https://github.com/mstorsjo/llvm-mingw/releases/download/20260922/llvm-mingw-20260922-ucrt-ubuntu-22.04-x86_64.tar.xz | tar -xJ -C /opt && \
+    mv /opt/llvm-mingw-20260922-ucrt-ubuntu-22.04-x86_64 /opt/llvm-mingw
+
+# Create masquerade symlinks for native GCC cross-compiler names.
+# The llvm-mingw triple-prefixed compilers (arm64ec-w64-mingw32-clang, etc.)
+# are found directly via /opt/llvm-mingw/bin in PATH — no wrappers needed.
+RUN mkdir -p /distcc/bin && \
+    ln -s /usr/bin/aarch64-linux-gnu-gcc /distcc/bin/gcc && \
+    ln -s /usr/bin/aarch64-linux-gnu-g++ /distcc/bin/g++ && \
+    ln -s /usr/bin/aarch64-linux-gnu-gcc /distcc/bin/cc && \
+    ln -s /usr/bin/aarch64-linux-gnu-g++ /distcc/bin/c++ && \
+    ln -s /usr/bin/aarch64-linux-gnu-gcc /distcc/bin/aarch64-unknown-linux-gnu-gcc && \
+    ln -s /usr/bin/aarch64-linux-gnu-g++ /distcc/bin/aarch64-unknown-linux-gnu-g++
+
+# Run as distcc user (created by the distcc package)
+USER distcc
+
+# Prepend masquerade dir and llvm-mingw to PATH
+ENV PATH="/distcc/bin:/opt/llvm-mingw/bin:$PATH"
+
+# Allow connections only from localhost for security, and disable whitelist for transient container
+ENTRYPOINT ["distccd", "--no-detach", "--log-stderr", "--listen", "127.0.0.1", "--allow", "127.0.0.1", "--make-me-a-botnet"]

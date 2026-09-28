@@ -32,6 +32,23 @@ if [ -n "$GITHUB_LOGIN" ] && [ -n "$GITHUB_PAT" ]; then
     BUILD_ARGS="--build-arg GITHUB_LOGIN=$GITHUB_LOGIN --build-arg GITHUB_PAT=$GITHUB_PAT"
 fi
 
+cleanup() {
+    echo "==== Cleaning up distccd helper ===="
+    docker stop alarm-distccd >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+echo "==== Starting native distccd helper ===="
+docker build -t alarm-distccd-helper -f Dockerfile.distccd .
+docker stop alarm-distccd >/dev/null 2>&1 || true
+docker run -d --rm --name alarm-distccd --network host alarm-distccd-helper
+
+# Because we are using host networking, they communicate over 127.0.0.1
+DISTCC_HOST="127.0.0.1"
+echo "distccd helper running at $DISTCC_HOST"
+
+BUILD_ARGS="$BUILD_ARGS --build-arg DISTCC_HOST=$DISTCC_HOST --network host"
+
 # Build the cross-compiled packages and output to ./dist
 echo "==== Building cross-compiled packages with Docker ===="
 docker buildx build $BUILD_ARGS -f Dockerfile -o type=local,dest=./dist .
